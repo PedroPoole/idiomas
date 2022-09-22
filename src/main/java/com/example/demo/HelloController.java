@@ -40,7 +40,7 @@ public class HelloController {
 			return new ResponseEntity<>(idiomas.get(idioma), HttpStatus.OK);
 		}
 		else {
-			return new ResponseEntity<>("Mal iidioma",HttpStatus.BAD_REQUEST);
+			return new ResponseEntity<>("Mal idioma",HttpStatus.BAD_REQUEST);
 		}	
 	}
 	
