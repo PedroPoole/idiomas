@@ -1,7 +1,12 @@
 package com.example.demo;
 
 import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
 
+import javax.transaction.Transactional;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,65 +21,65 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @ResponseBody
+@Transactional//EH? Por qué hace falta esto aquí?
 public class HelloController {
 	
 	HashMap<String, String> idiomas = new HashMap<String, String>();
 	
-	
-	public HelloController() {
-		idiomas.put("ES", "Hola, Mundo!");
-		idiomas.put("EN", "Hello, World!");
-		idiomas.put("IT", "Ciao, Mondo!");
-		idiomas.put("FR", "Bonjour le monde!");
-		idiomas.put("DE", "Hallo Welt!");
-		idiomas.put("ZH", "你好世界!");
-		idiomas.put("PL", "Witaj świecie!");
-	}
-	
-	
+	@Autowired
+	RepositorioIdiomas repoIdiomas;
 	
 	
 	@RequestMapping(method=RequestMethod.GET, value="/saludar")
-	public ResponseEntity<?> dameNombre(@RequestParam (defaultValue="ES") String idioma) {
-		if(idiomas.containsKey(idioma.toUpperCase())) {
-			return new ResponseEntity<>(idiomas.get(idioma), HttpStatus.OK);
+	public ResponseEntity<Idioma> dameNombre(@RequestParam (defaultValue="ES") String idioma) {
+		List<Idioma> idiomaElegido = repoIdiomas.findByNombreIdioma(idioma);
+		if(idiomaElegido.size()!=0) {
+			return new ResponseEntity<>(idiomaElegido.get(0), HttpStatus.OK);
 		}
 		else {
-			return new ResponseEntity<>("Mal idioma",HttpStatus.BAD_REQUEST);
-		}	
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+		}
 	}
+	
+	
 	
 	@RequestMapping(method=RequestMethod.POST, value="/crearIdioma")
-	public ResponseEntity<?> creaIdioma(@RequestParam String idioma, @RequestParam String traduccion) {
-		if(!idiomas.containsKey(idioma)) {
-			idiomas.put(idioma, traduccion);
-			return new ResponseEntity<>("Idioma "+idioma +" añadido con la traducción "+traduccion, HttpStatus.OK);
-		}
-		else {
-			return new ResponseEntity<>("Ya existe",HttpStatus.BAD_REQUEST);
-		}	
+	public ResponseEntity<Idioma> creaIdioma(@RequestParam String idioma, @RequestParam String traduccion) {
+		try {
+		Idioma _idioma = repoIdiomas
+				.save(new Idioma(idioma, traduccion));
+		return new ResponseEntity<>(_idioma, HttpStatus.CREATED);
+	} catch (Exception e) {
+		return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+	}
+		
 	}
 	
-	@RequestMapping(method=RequestMethod.POST, value="/borrarIdioma")
+
+	
+	@RequestMapping(method=RequestMethod.DELETE, value="/borrarIdioma")
 	public ResponseEntity<?> borraIdioma(@RequestParam String idioma) {
-		if(idiomas.containsKey(idioma)) {
-			idiomas.remove(idioma);
-			return new ResponseEntity<>("Idioma "+idioma +" eliminado.", HttpStatus.OK);
+		List<Idioma> idiomaElegido = repoIdiomas.findByNombreIdioma(idioma);
+		if(idiomaElegido.size()!=0) {
+			repoIdiomas.deleteByNombreIdioma(idioma);
+			return new ResponseEntity<>(HttpStatus.NO_CONTENT);
 		}
 		else {
-			return new ResponseEntity<>("No existe tal idioma, lo siento.",HttpStatus.BAD_REQUEST);
-		}	
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+		}
 	}
 	
-	@RequestMapping(method=RequestMethod.POST, value="/modificarIdioma")
+	@RequestMapping(method=RequestMethod.PUT, value="/modificarIdioma")	
 	public ResponseEntity<?> modificaIdioma(@RequestParam String idioma, @RequestParam String traduccion) {
-		if(idiomas.containsKey(idioma)) {
-			idiomas.put(idiomas.get(idioma),traduccion);
-			return new ResponseEntity<>("Idioma "+idioma +" modificado para que su traducción sea "+traduccion, HttpStatus.OK);
+		List<Idioma> idiomaElegido = repoIdiomas.findByNombreIdioma(idioma);
+		if(idiomaElegido.size()!=0) {
+			Idioma aCambiar=idiomaElegido.get(0);
+			aCambiar.setTraduccionIdioma(traduccion);
+			return new ResponseEntity<>(repoIdiomas.save(aCambiar), HttpStatus.OK);
 		}
 		else {
-			return new ResponseEntity<>("No se puede modificar un idioma que no existe.",HttpStatus.BAD_REQUEST);
-		}	
+			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+		}
 	}
 	
 	
